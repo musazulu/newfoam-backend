@@ -19,13 +19,16 @@ SECRET_KEY = env('SECRET_KEY', default='your-secret-key-change-in-production')
 
 DEBUG = env.bool('DEBUG', default=False)
 
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[
+# Build ALLOWED_HOSTS from env var, then always add vercel/railway wildcards
+_allowed_hosts = env.list('ALLOWED_HOSTS', default=[])
+ALLOWED_HOSTS = list(set(_allowed_hosts + [
     'localhost',
     '127.0.0.1',
-    '.railway.app',
     '.vercel.app',
+    '.railway.app',
     '.up.railway.app',
-])
+    '.neon.tech',
+]))
 
 INSTALLED_APPS = [
     'django.contrib.admin',
