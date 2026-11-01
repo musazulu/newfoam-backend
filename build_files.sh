@@ -1,6 +1,4 @@
 #!/bin/bash
-# Build script — also installs deps as a safety net (builder auto-installs from requirements.txt too)
-pip install -r requirements.txt
-
-# Collect static files for Whitenoise
+# Build script — Vercel's @vercel/python builder auto-installs from requirements.txt via uv.
+# This script runs collectstatic for Whitenoise static file serving.
 python manage.py collectstatic --noinput
