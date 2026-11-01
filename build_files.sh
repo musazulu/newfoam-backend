@@ -1,10 +1,6 @@
 #!/bin/bash
+# Build script — also installs deps as a safety net (builder auto-installs from requirements.txt too)
+pip install -r requirements.txt
 
-# Install dependencies from the clean requirements file
-pip install -r requirements-prod.txt
-
-# Collect static files
+# Collect static files for Whitenoise
 python manage.py collectstatic --noinput
-
-# Run database migrations
-python manage.py migrate --noinput
