@@ -2,7 +2,7 @@ from rest_framework import viewsets, generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.shortcuts import get_object_or_404
-from django.db import transaction
+from django.db import transaction, models
 from decimal import Decimal
 from .models import Order, OrderItem, DeliveryZone
 from .serializers import (

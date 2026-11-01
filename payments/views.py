@@ -1,7 +1,6 @@
 from rest_framework import viewsets, generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-import stripe
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 from .models import Payment, Refund
@@ -11,8 +10,6 @@ from .serializers import (
     RefundSerializer
 )
 from orders.models import Order
-
-stripe.api_key = settings.STRIPE_SECRET_KEY
 
 class PaymentViewSet(viewsets.ModelViewSet):
     serializer_class = PaymentSerializer
@@ -98,6 +95,9 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 )
             
             try:
+                import stripe
+                stripe.api_key = settings.STRIPE_SECRET_KEY
+
                 # Create Stripe charge
                 charge = stripe.Charge.create(
                     amount=int(order.total_amount * 100),  # Convert to cents
@@ -130,6 +130,13 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 payment.save()
                 return Response(
                     {'error': str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            except Exception as e:
+                payment.status = 'failed'
+                payment.save()
+                return Response(
+                    {'error': f'Payment processing error: {str(e)}'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
         

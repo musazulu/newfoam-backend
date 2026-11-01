@@ -100,6 +100,7 @@ elif env('DB_ENGINE', default='sqlite') == 'django.db.backends.postgresql':
         }
     }
 else:
+    # SQLite for local dev only — Vercel filesystem is read-only so set DATABASE_URL in production
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -122,7 +123,16 @@ USE_TZ = True
 # Static files
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Django 4.2+ uses STORAGES dict; whitenoise compression via CompressedManifestStaticFilesStorage
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Media files
 USE_CLOUDINARY = env.bool('USE_CLOUDINARY', default=False)
