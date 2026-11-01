@@ -50,13 +50,15 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 class LoginSerializer(TokenObtainPairSerializer):
+    username_field = User.USERNAME_FIELD  # 'email'
+
     def validate(self, attrs):
         data = super().validate(attrs)
         
         # Add custom response data
         data.update({
             'user': {
-                'id': self.user.id,
+                'id': str(self.user.id),
                 'email': self.user.email,
                 'username': self.user.username,
                 'is_verified': self.user.is_verified,

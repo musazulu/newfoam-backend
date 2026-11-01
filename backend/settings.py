@@ -101,12 +101,23 @@ elif env('DB_ENGINE', default='sqlite') == 'django.db.backends.postgresql':
     }
 else:
     # SQLite for local dev only — Vercel filesystem is read-only so set DATABASE_URL in production
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / env('DB_NAME', default='db.sqlite3'),
+    # Use in-memory SQLite as fallback so the app starts (read-only — data won't persist)
+    import sys
+    _is_vercel = os.environ.get('VERCEL') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME')
+    if _is_vercel:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': ':memory:',
+            }
         }
-    }
+    else:
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / env('DB_NAME', default='db.sqlite3'),
+            }
+        }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
