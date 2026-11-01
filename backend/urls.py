@@ -26,41 +26,8 @@ schema_view = get_schema_view(
 def health_check(request):
     return JsonResponse({'status': 'ok', 'message': 'BeddingZim API is running'})
 
-def debug_check(request):
-    """Temporary debug endpoint — shows config info to diagnose Vercel crashes."""
-    import sys
-    info = {
-        'python': sys.version,
-        'django': None,
-        'db_engine': None,
-        'db_error': None,
-        'allowed_hosts': None,
-        'installed_apps': None,
-    }
-    try:
-        import django
-        info['django'] = django.__version__
-    except Exception as e:
-        info['django'] = str(e)
-    try:
-        from django.conf import settings as s
-        info['allowed_hosts'] = s.ALLOWED_HOSTS
-        info['db_engine'] = s.DATABASES['default']['ENGINE']
-        info['installed_apps'] = s.INSTALLED_APPS
-    except Exception as e:
-        info['db_error'] = str(e)
-    try:
-        from django.db import connection
-        connection.ensure_connection()
-        info['db_connected'] = True
-    except Exception as e:
-        info['db_connected'] = False
-        info['db_error'] = str(e)
-    return JsonResponse(info)
-
 urlpatterns = [
     path('', health_check, name='health-check'),
-    path('debug/', debug_check, name='debug-check'),
     path('admin/', admin.site.urls),
     path('api/', include([
         path('', include('accounts.urls')),
