@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Install dependencies
-pip install -r requirements.txt
+# Install dependencies from the clean requirements file
+pip install -r requirements-prod.txt
 
 # Collect static files
 python manage.py collectstatic --noinput
