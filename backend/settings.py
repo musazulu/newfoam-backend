@@ -126,9 +126,15 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Media files
 USE_CLOUDINARY = env.bool('USE_CLOUDINARY', default=False)
+USE_IMAGEKIT = env.bool('USE_IMAGEKIT', default=False)
 USE_S3 = env.bool('USE_S3', default=False)
 
-if USE_CLOUDINARY:
+if USE_IMAGEKIT:
+    IMAGEKIT_PRIVATE_KEY = env('IMAGEKIT_PRIVATE_KEY', default='')
+    IMAGEKIT_PUBLIC_KEY = env('IMAGEKIT_PUBLIC_KEY', default='')
+    IMAGEKIT_URL_ENDPOINT = env('IMAGEKIT_URL_ENDPOINT', default='')
+    MEDIA_URL = IMAGEKIT_URL_ENDPOINT + '/'
+elif USE_CLOUDINARY:
     import cloudinary
     cloudinary.config(
         cloud_name=env('CLOUDINARY_CLOUD_NAME'),
