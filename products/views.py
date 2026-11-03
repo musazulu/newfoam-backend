@@ -24,7 +24,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.AllowAny]
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['category__slug', 'size', 'material', 'is_featured']
+    filterset_fields = ['size', 'material', 'is_featured']
     search_fields = ['name', 'description', 'short_description']
     ordering_fields = ['price_usd', 'average_rating', 'created_at', 'total_sold']
     ordering = ['-created_at']
