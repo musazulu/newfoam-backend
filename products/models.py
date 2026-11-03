@@ -125,20 +125,120 @@ class Product(models.Model):
     
 
 class ProductImage(models.Model):
-    """Multiple images per product"""
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to='products/', blank=True, null=True)
-    image_url = models.URLField(max_length=500, blank=True, null=True, help_text="Paste an image URL (use this instead of uploading a file)")
-    alt_text = models.CharField(max_length=200, blank=True)
-    is_primary = models.BooleanField(default=False)
-    order = models.PositiveIntegerField(default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
+    """Multiple images per product.
     
+    Two ways to provide an image:
+      1. Upload a file via the admin — it gets sent to ImageKit and the
+         returned CDN URL is stored in `image_url` automatically.
+      2. Paste a URL directly into `image_url` (e.g. Unsplash, existing CDN).
+    
+    The first image added to a product is automatically set as primary.
+    Only one image per product can be primary at a time.
+    """
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(
+        upload_to='products/',
+        blank=True,
+        null=True,
+        help_text="Upload an image file — it will be sent to ImageKit CDN automatically."
+    )
+    image_url = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="CDN URL (auto-filled after upload, or paste a URL directly)."
+    )
+    alt_text = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Describe the image for accessibility and SEO."
+    )
+    is_primary = models.BooleanField(
+        default=False,
+        help_text="The primary image is shown in product listings and cards."
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        help_text="Lower numbers appear first."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         ordering = ['order', 'created_at']
-    
+
     def __str__(self):
-        return f"Image for {self.product.name}"
+        return f"{'[PRIMARY] ' if self.is_primary else ''}Image for {self.product.name}"
+
+    def get_display_url(self):
+        """Return the best available URL for this image."""
+        if self.image_url:
+            return self.image_url
+        if self.image:
+            return self.image.url
+        return None
+
+    def save(self, *args, **kwargs):
+        # ── 1. Upload file to ImageKit if a new file was attached ──────────
+        if self.image and not self.image_url:
+            url = self._upload_to_imagekit()
+            if url:
+                self.image_url = url
+                # Clear the local file reference — the CDN URL is the source of truth
+                self.image = None
+
+        # ── 2. Auto-set primary if this is the first image for the product ─
+        if not self.pk:  # new record
+            if not ProductImage.objects.filter(product=self.product).exists():
+                self.is_primary = True
+
+        # ── 3. Enforce single primary: demote others when this is set ──────
+        if self.is_primary:
+            ProductImage.objects.filter(
+                product=self.product, is_primary=True
+            ).exclude(pk=self.pk).update(is_primary=False)
+
+        super().save(*args, **kwargs)
+
+        # ── 4. Guarantee at least one primary exists ───────────────────────
+        if not ProductImage.objects.filter(product=self.product, is_primary=True).exists():
+            first = ProductImage.objects.filter(product=self.product).first()
+            if first:
+                ProductImage.objects.filter(pk=first.pk).update(is_primary=True)
+
+    def _upload_to_imagekit(self):
+        """Upload self.image file to ImageKit via REST API. Returns CDN URL or None."""
+        from django.conf import settings as django_settings
+        private_key = getattr(django_settings, 'IMAGEKIT_PRIVATE_KEY', '')
+        if not private_key:
+            return None
+        try:
+            import base64
+            import requests as req
+
+            # ImageKit upload API uses HTTP Basic Auth: private_key as username, empty password
+            credentials = base64.b64encode(f"{private_key}:".encode()).decode()
+
+            self.image.seek(0)
+            file_name = self.image.name.split('/')[-1] or 'product-image.jpg'
+
+            response = req.post(
+                'https://upload.imagekit.io/api/v1/files/upload',
+                headers={'Authorization': f'Basic {credentials}'},
+                data={
+                    'fileName': file_name,
+                    'folder': '/products/',
+                    'useUniqueFileName': 'true',
+                },
+                files={'file': (file_name, self.image, 'image/jpeg')},
+                timeout=30,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data.get('url') or data.get('filePath')
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"ImageKit upload failed: {e}")
+            return None
 
 class ProductLike(models.Model):
     """Track which users like which products"""

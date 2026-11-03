@@ -138,46 +138,73 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Django 4.2+ uses STORAGES dict; whitenoise compression via CompressedManifestStaticFilesStorage
-STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
-
-# Media files
+# Media / Image Storage
 USE_CLOUDINARY = env.bool('USE_CLOUDINARY', default=False)
 USE_IMAGEKIT = env.bool('USE_IMAGEKIT', default=False)
 USE_S3 = env.bool('USE_S3', default=False)
 
-if USE_IMAGEKIT:
+if USE_CLOUDINARY:
+    import cloudinary
+    cloudinary.config(
+        cloud_name=env('CLOUDINARY_CLOUD_NAME', default=''),
+        api_key=env('CLOUDINARY_API_KEY', default=''),
+        api_secret=env('CLOUDINARY_API_SECRET', default=''),
+    )
+    STORAGES = {
+        "default": {
+            "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+    MEDIA_URL = '/media/'
+
+elif USE_IMAGEKIT:
+    # ImageKit: files uploaded via admin are sent to ImageKit REST API.
+    # Django stores the returned URL in the image_url CharField — no local file storage needed.
     IMAGEKIT_PRIVATE_KEY = env('IMAGEKIT_PRIVATE_KEY', default='')
     IMAGEKIT_PUBLIC_KEY = env('IMAGEKIT_PUBLIC_KEY', default='')
     IMAGEKIT_URL_ENDPOINT = env('IMAGEKIT_URL_ENDPOINT', default='')
-    MEDIA_URL = IMAGEKIT_URL_ENDPOINT + '/'
-elif USE_CLOUDINARY:
-    import cloudinary
-    cloudinary.config(
-        cloud_name=env('CLOUDINARY_CLOUD_NAME'),
-        api_key=env('CLOUDINARY_API_KEY'),
-        api_secret=env('CLOUDINARY_API_SECRET'),
-    )
-    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
     MEDIA_URL = '/media/'
+    MEDIA_ROOT = BASE_DIR / 'media'
+
 elif USE_S3:
-    AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY')
-    AWS_STORAGE_BUCKET_NAME = env('AWS_STORAGE_BUCKET_NAME')
+    AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID', default='')
+    AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY', default='')
+    AWS_STORAGE_BUCKET_NAME = env('AWS_STORAGE_BUCKET_NAME', default='')
     AWS_S3_REGION_NAME = env('AWS_S3_REGION_NAME', default='us-east-1')
     AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
     AWS_DEFAULT_ACL = 'public-read'
     AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
     MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
+
 else:
+    # Local filesystem — development only
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
     MEDIA_URL = '/media/'
     MEDIA_ROOT = BASE_DIR / 'media'
 
