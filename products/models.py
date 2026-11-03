@@ -100,14 +100,14 @@ class Product(models.Model):
     @property
     def discounted_price_usd(self):
         if self.discount_percentage > 0:
-            discount_amount = (self.discount_percentage / 100) * self.price_usd
+            discount_amount = (Decimal(self.discount_percentage) / Decimal(100)) * self.price_usd
             return self.price_usd - discount_amount
         return self.price_usd
-    
+
     @property
     def discounted_price_zwl(self):
         if self.price_zwl and self.discount_percentage > 0:
-            discount_amount = (self.discount_percentage / 100) * self.price_zwl
+            discount_amount = (Decimal(self.discount_percentage) / Decimal(100)) * self.price_zwl
             return self.price_zwl - discount_amount
         return self.price_zwl
     
